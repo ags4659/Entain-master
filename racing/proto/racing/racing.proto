@@ -10,7 +10,6 @@ service Racing {
   rpc ListRaces(ListRacesRequest) returns (ListRacesResponse) {}
 }
 
-
 /* Requests/Responses */
 
 // Request for ListRaces call.
@@ -20,6 +19,9 @@ message ListRacesRequest {
   }
   repeated int64 meeting_ids = 1;
   Filter filter = 2;
+  // Add a field to specify the sort order
+  string sort_by = 3;
+  bool ascending = 4;
 }
 
 // Response to ListRaces call.
