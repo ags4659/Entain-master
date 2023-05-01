@@ -34,5 +34,13 @@ func (s *racingService) ListRaces(ctx context.Context, in *racing.ListRacesReque
     return &racing.ListRacesResponse{Races: races}, nil
 }
 
+// GetRace returns a single race by its ID.
+func (s *racingService) GetRace(ctx context.Context, req *racing.GetRaceRequest) (*racing.GetRaceResponse, error) {
+	race, err := s.racesRepo.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
 
+	return &racing.GetRaceResponse{Race: race}, nil
+}
 func (s *racingService) mustEmbedUnimplementedRacingServer() {}

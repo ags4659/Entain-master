@@ -16,6 +16,9 @@ type RacesRepo interface {
     Init() error
     // Update the signature of the List method to match the proto definition.
     List(context.Context, *racing.ListRacesRequest) ([]*racing.Race, error)
+
+    // Get: This method returns a single race identified by its unique identifier id.
+    Get(ctx context.Context, id int64) (*racing.Race, error)
 }
 
 type racesRepo struct {
@@ -64,6 +67,42 @@ func (r *racesRepo) List(ctx context.Context, req *racing.ListRacesRequest) ([]*
 
     return r.scanRaces(rows)
 }
+
+// Get returns a single race identified by its unique identifier id.
+func (r *racesRepo) Get(ctx context.Context, id int64) (*racing.Race, error) {
+    var (
+        race           racing.Race
+        advertisedTime time.Time
+        status         string
+    )
+
+    // Get the SQL query to retrieve a single race by its ID from the query map.
+    query := getRaceQueries()[raceByID]
+
+    // Query the database with the race ID and scan the returned row into the race struct.
+    err := r.db.QueryRowContext(ctx, query, id).Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedTime, &status)
+    if err != nil {
+        // Return nil if no rows are returned for the given race ID.
+        if err == sql.ErrNoRows {
+            return nil, nil
+        }
+        return nil, err
+    }
+
+    // Convert the advertised start time to a Protobuf timestamp.
+    ts, err := ptypes.TimestampProto(advertisedTime)
+    if err != nil {
+        return nil, err
+    }
+
+    // Set the advertised start time and status of the race struct and return the race.
+    race.AdvertisedStartTime = ts
+    race.Status = status
+
+    return &race, nil
+}
+
+
 
 // applyFilter returns the SQL query with the specified filters applied.
 func (r *racesRepo) applyFilter(query string, meetingIDs []int64, visibleOnly bool) (string, []interface{}) {

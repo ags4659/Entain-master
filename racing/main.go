@@ -42,10 +42,13 @@ func run() error {
 
 	grpcServer := grpc.NewServer()
 
+	// Register the RacingService with the gRPC server
 	racing.RegisterRacingServer(
 		grpcServer,
 		service.NewRacingService(racesRepo),
 	)
+
+	
 
 	log.Printf("gRPC server listening on: %s\n", *grpcEndpoint)
 
