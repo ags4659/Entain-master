@@ -1,117 +1,122 @@
 package db
 
 import (
-	"database/sql"
-	"github.com/golang/protobuf/ptypes"
-	_ "github.com/mattn/go-sqlite3"
-	"strings"
-	"sync"
-	"time"
-
-	"git.neds.sh/matty/entain/racing/proto/racing"
+    "context"
+    "database/sql"
+    "git.neds.sh/matty/entain/racing/proto/racing"
+    _ "github.com/mattn/go-sqlite3"
+    "github.com/golang/protobuf/ptypes"
+    "strings"
+    "sync"
+    "time"
 )
 
 // RacesRepo provides repository access to races.
 type RacesRepo interface {
-	// Init will initialise our races repository.
-	Init() error
-
-	// List will return a list of races.
-	List(filter *racing.ListRacesRequestFilter) ([]*racing.Race, error)
+    Init() error
+    // Update the signature of the List method to match the proto definition.
+    List(context.Context, *racing.ListRacesRequest) ([]*racing.Race, error)
 }
 
 type racesRepo struct {
-	db   *sql.DB
-	init sync.Once
+    db   *sql.DB
+    init sync.Once
 }
 
 // NewRacesRepo creates a new races repository.
 func NewRacesRepo(db *sql.DB) RacesRepo {
-	return &racesRepo{db: db}
+    return &racesRepo{db: db}
 }
 
 // Init prepares the race repository dummy data.
 func (r *racesRepo) Init() error {
-	var err error
+    var err error
 
-	r.init.Do(func() {
-		// For test/example purposes, we seed the DB with some dummy races.
-		err = r.seed()
-	})
+    r.init.Do(func() {
+        // For test/example purposes, we seed the DB with some dummy races.
+        err = r.seed()
+    })
 
-	return err
+    return err
 }
 
-func (r *racesRepo) List(filter *racing.ListRacesRequestFilter) ([]*racing.Race, error) {
-	var (
-		err   error
-		query string
-		args  []interface{}
-	)
+func (r *racesRepo) List(ctx context.Context, req *racing.ListRacesRequest) ([]*racing.Race, error) {
+    var (
+        err   error
+        query string
+        args  []interface{}
+    )
 
-	query = getRaceQueries()[racesList]
+    query = getRaceQueries()[racesList]
 
-	query, args = r.applyFilter(query, filter)
+    // Apply filters to the SQL query
+    query, args = r.applyFilter(query, req.MeetingIds, req.Filter.VisibleOnly)
 
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
+    
 
-	return r.scanRaces(rows)
+    rows, err := r.db.QueryContext(ctx, query, args...)
+    if err != nil {
+        return nil, err
+    }
+
+    return r.scanRaces(rows)
 }
 
-func (r *racesRepo) applyFilter(query string, filter *racing.ListRacesRequestFilter) (string, []interface{}) {
-	var (
-		clauses []string
-		args    []interface{}
-	)
+// applyFilter returns the SQL query with the specified filters applied.
+func (r *racesRepo) applyFilter(query string, meetingIDs []int64, visibleOnly bool) (string, []interface{}) {
+    var (
+        clauses []string
+        args    []interface{}
+    )
 
-	if filter == nil {
-		return query, args
-	}
+    if len(meetingIDs) > 0 {
+        clauses = append(clauses, "meeting_id IN ("+strings.Repeat("?,", len(meetingIDs)-1)+"?)")
 
-	if len(filter.MeetingIds) > 0 {
-		clauses = append(clauses, "meeting_id IN ("+strings.Repeat("?,", len(filter.MeetingIds)-1)+"?)")
+        for _, meetingID := range meetingIDs {
+            args = append(args, meetingID)
+        }
+    }
 
-		for _, meetingID := range filter.MeetingIds {
-			args = append(args, meetingID)
-		}
-	}
+    if visibleOnly {
+        clauses = append(clauses, "visible = 1")
+    } else {
+        clauses = append(clauses, "visible = 0")
+    }
 
-	if len(clauses) != 0 {
-		query += " WHERE " + strings.Join(clauses, " AND ")
-	}
+    if len(clauses) != 0 {
+        query += " WHERE " + strings.Join(clauses, " AND ")
+    }
 
-	return query, args
+    return query, args
 }
+
 
 func (m *racesRepo) scanRaces(
-	rows *sql.Rows,
+    rows *sql.Rows,
 ) ([]*racing.Race, error) {
-	var races []*racing.Race
+    var races []*racing.Race
 
-	for rows.Next() {
-		var race racing.Race
-		var advertisedStart time.Time
+    for rows.Next() {
+        var race racing.Race
+        var advertisedStart time.Time
 
-		if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, nil
-			}
+        if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart); err != nil {
+            if err == sql.ErrNoRows {
+                return nil, nil
+            }
 
-			return nil, err
-		}
+            return nil, err
+        }
 
-		ts, err := ptypes.TimestampProto(advertisedStart)
-		if err != nil {
-			return nil, err
-		}
+        ts, err := ptypes.TimestampProto(advertisedStart)
+        if err != nil {
+            return nil, err
+        }
 
-		race.AdvertisedStartTime = ts
+        race.AdvertisedStartTime = ts
 
-		races = append(races, &race)
-	}
+        races = append(races, &race)
+    }
 
-	return races, nil
+    return races, nil
 }

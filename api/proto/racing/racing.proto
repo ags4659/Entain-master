@@ -7,7 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/api/annotations.proto";
 
 service Racing {
-  // ListRaces returns a list of all races.
+  // ListRaces returns a list of races.
   rpc ListRaces(ListRacesRequest) returns (ListRacesResponse) {
     option (google.api.http) = { post: "/v1/list-races", body: "*" };
   }
@@ -17,17 +17,16 @@ service Racing {
 
 // Request for ListRaces call.
 message ListRacesRequest {
-  ListRacesRequestFilter filter = 1;
+  message Filter {
+    bool visible_only = 1;
+  }
+  repeated int64 meeting_ids = 1;
+  Filter filter = 2;
 }
 
 // Response to ListRaces call.
 message ListRacesResponse {
   repeated Race races = 1;
-}
-
-// Filter for listing races.
-message ListRacesRequestFilter {
-  repeated int64 meeting_ids = 1;
 }
 
 /* Resources */
