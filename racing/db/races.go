@@ -102,8 +102,9 @@ func (m *racesRepo) scanRaces(
     for rows.Next() {
         var race racing.Race
         var advertisedStart time.Time
+        var status string
 
-        if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart); err != nil {
+        if err := rows.Scan(&race.Id, &race.MeetingId, &race.Name, &race.Number, &race.Visible, &advertisedStart, &status); err != nil {
             if err == sql.ErrNoRows {
                 return nil, nil
             }
@@ -117,6 +118,7 @@ func (m *racesRepo) scanRaces(
         }
 
         race.AdvertisedStartTime = ts
+        race.Status = status // For Status message 
 
         races = append(races, &race)
     }
