@@ -1,0 +1,52 @@
+syntax = "proto3";
+package sports;
+
+option go_package = "/sports";
+
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+service Sports {
+  // ListEvents returns a list of all Events.
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = { post: "/v1/listEvents", body: "*" };
+  }
+}
+
+/* Requests/Responses */
+
+message ListEventsRequest {
+  ListEventsRequestFilter filter = 1;
+}
+
+// Response to ListEvents call.
+message ListEventsResponse {
+  repeated Event Events = 1;
+}
+
+// Filter for listing Events.
+message ListEventsRequestFilter {
+  repeated int64 Event_ids = 1;
+}
+
+/* Resources */
+
+// An Event resource.
+message Event {
+  // ID represents a unique identifier for the Event.
+  int64 id = 1;
+  // EventID represents a unique identifier for the Event's Event.
+  int64 event_id = 2;
+  // Name is the official name given to the Event.
+  string name = 3;
+  // Location is the location where the Event is taking place.
+  string location = 4;
+  // Team is the team that is participating in the Event.
+  string team = 5;
+  // Winner is the name of the winner of the Event.
+  string winner = 6;
+  // RunnerUp is the name of the runner up in the Event.
+  string runner_up = 7;
+  // AdvertisedStartTime is the time the Event is advertised to run.
+  google.protobuf.Timestamp advertised_start_time = 8;
+}
