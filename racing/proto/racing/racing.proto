@@ -10,20 +10,21 @@ service Racing {
   rpc ListRaces(ListRacesRequest) returns (ListRacesResponse) {}
 }
 
+
 /* Requests/Responses */
 
+// Request for ListRaces call.
 message ListRacesRequest {
-  ListRacesRequestFilter filter = 1;
+  message Filter {
+    bool visible_only = 1;
+  }
+  repeated int64 meeting_ids = 1;
+  Filter filter = 2;
 }
 
 // Response to ListRaces call.
 message ListRacesResponse {
   repeated Race races = 1;
-}
-
-// Filter for listing races.
-message ListRacesRequestFilter {
-  repeated int64 meeting_ids = 1;
 }
 
 /* Resources */
@@ -43,4 +44,3 @@ message Race {
   // AdvertisedStartTime is the time the race is advertised to run.
   google.protobuf.Timestamp advertised_start_time = 6;
 }
-
