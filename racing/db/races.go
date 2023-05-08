@@ -52,7 +52,10 @@ func (r *racesRepo) List(ctx context.Context, req *racing.ListRacesRequest) ([]*
     // Apply filters to the SQL query
     query, args = r.applyFilter(query, req.MeetingIds, req.Filter.VisibleOnly)
 
-    
+    // Add the order by clause to the SQL query if sorting is specified
+    if req.SortBy != "" {
+        query += " ORDER BY advertised_start_time " + req.SortBy
+    }
 
     rows, err := r.db.QueryContext(ctx, query, args...)
     if err != nil {
